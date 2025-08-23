@@ -3,8 +3,8 @@ import { create } from 'zustand';
 import axios from 'axios';
 import { db, auth } from '../firebase';
 import { doc, setDoc, getDocs, collection } from 'firebase/firestore';
+import { FirebaseError } from 'firebase/app';
 
-// STATUS_OPTIONSの定義は変更なし
 export const STATUS_OPTIONS = {
   'No Try': { label: 'No Try', color: 'text.secondary', backgroundColor: '#fafafa' },
   'Kaiseki AC': { label: '解説AC', color: 'info.main', backgroundColor: '#e3f2fd' },
@@ -20,62 +20,75 @@ export interface Problem {
   solveCount?: number;
   lastSolved?: number;
   status?: keyof typeof STATUS_OPTIONS;
+  memo?: string; // 👈 'memo'プロパティを追加
 }
 
-// --- APIから取得する提出データの型を定義 ---
 interface Submission {
   epoch_second: number;
   problem_id: string;
   result: string;
-  // 他にも多くのプロパティがありますが、使用するものだけ定義すれば十分です
 }
 
 interface ProblemState {
   problems: Problem[];
   isLoading: boolean;
+  error: string | null;
   fetchAndMergeProblems: (atcoderId: string) => Promise<void>;
   updateProblemStatus: (problemId: string, newStatus: string) => Promise<void>;
+  updateProblemMemo: (problemId: string, memo: string) => Promise<void>; // 👈 'updateProblemMemo'アクションを追加
 }
 
 export const useProblemStore = create<ProblemState>((set, get) => ({
   problems: [],
   isLoading: false,
+  error: null,
   
   updateProblemStatus: async (problemId, newStatus) => {
     const user = auth.currentUser;
-    if (!user) {
-      console.log("User not logged in. Status not saved.");
-      set({
-        problems: get().problems.map(p => p.id === problemId ? { ...p, status: newStatus as keyof typeof STATUS_OPTIONS } : p),
-      });
-      return;
-    }
+    const problems = get().problems;
+    const updatedProblems = problems.map(p => p.id === problemId ? { ...p, status: newStatus as keyof typeof STATUS_OPTIONS } : p);
+    set({ problems: updatedProblems });
 
+    if (!user) return;
     try {
       const statusRef = doc(db, 'users', user.uid, 'statuses', problemId);
       await setDoc(statusRef, { status: newStatus });
-      console.log(`Status for ${problemId} saved to Firebase.`);
     } catch (error) {
       console.error("Failed to update status in Firebase:", error);
     }
+  },
 
-    set({
-      problems: get().problems.map(p => p.id === problemId ? { ...p, status: newStatus as keyof typeof STATUS_OPTIONS } : p),
-    });
+  // --- 'updateProblemMemo'の実装を追加 ---
+  updateProblemMemo: async (problemId, memo) => {
+    const user = auth.currentUser;
+    const problems = get().problems;
+    const updatedProblems = problems.map(p => p.id === problemId ? { ...p, memo } : p);
+    set({ problems: updatedProblems });
+
+    if (!user) return;
+    try {
+      const memoRef = doc(db, 'users', user.uid, 'memos', problemId);
+      await setDoc(memoRef, { memo });
+    } catch (error) {
+      console.error("Failed to update memo in Firebase:", error);
+    }
   },
 
   fetchAndMergeProblems: async (atcoderId) => {
-    set({ isLoading: true });
+    set({ isLoading: true, error: null });
     const user = auth.currentUser;
 
     try {
       const savedStatuses = new Map<string, keyof typeof STATUS_OPTIONS>();
+      const savedMemos = new Map<string, string>(); // メモ用のMapを追加
+
       if (user) {
         const statusesSnapshot = await getDocs(collection(db, 'users', user.uid, 'statuses'));
-        statusesSnapshot.forEach(doc => {
-          savedStatuses.set(doc.id, doc.data().status);
-        });
-        console.log(`Loaded ${savedStatuses.size} statuses from Firebase.`);
+        statusesSnapshot.forEach(doc => savedStatuses.set(doc.id, doc.data().status));
+        
+        // Firestoreからメモを取得する処理を追加
+        const memosSnapshot = await getDocs(collection(db, 'users', user.uid, 'memos'));
+        memosSnapshot.forEach(doc => savedMemos.set(doc.id, doc.data().memo));
       }
 
       const [problemResponse, difficultyResponse] = await Promise.all([
@@ -86,7 +99,6 @@ export const useProblemStore = create<ProblemState>((set, get) => ({
       const difficultyModels: Record<string, { difficulty?: number }> = difficultyResponse.data;
       const problemsWithDifficulty = allProblems.map(p => ({ ...p, difficulty: difficultyModels[p.id]?.difficulty }));
 
-      // --- 'any[]'を'Submission[]'に修正 ---
       let allSubmissions: Submission[] = [];
       let lastTimestamp = 0;
       while (true) {
@@ -113,13 +125,18 @@ export const useProblemStore = create<ProblemState>((set, get) => ({
           solveCount: submissionData?.solveCount || 0,
           lastSolved: submissionData?.lastSolved,
           status: savedStatuses.get(problem.id) || 'No Try',
+          memo: savedMemos.get(problem.id) || '', // 取得したメモをマージ
         };
       });
-
       set({ problems: finalMergedProblems });
 
-    } catch (error) {
-      console.error("Failed to fetch and merge problems", error);
+    } catch (err) {
+      console.error("Failed to fetch and merge problems", err);
+      let errorMessage = 'データの取得中に不明なエラーが発生しました。';
+      if (err instanceof FirebaseError && err.code === 'permission-denied') {
+        errorMessage = 'データベースへのアクセスが拒否されました。Firebaseのセキュリティルールを更新してください。';
+      }
+      set({ problems: [], error: errorMessage });
     } finally {
       set({ isLoading: false });
     }
