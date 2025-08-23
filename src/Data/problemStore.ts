@@ -3,31 +3,52 @@
 import { create } from 'zustand';
 import axios from 'axios';
 
+// --- ステータスオプションを定義・エクスポート ---
+export const STATUS_OPTIONS = {
+  'No Try': { label: 'No Try', color: 'text.secondary', backgroundColor: 'transparent' },
+  // --- 背景色を、より薄いHEXコードに変更 ---
+  'Kaiseki AC': { label: '解説AC', color: 'info.main', backgroundColor: '#e3f2fd' }, // ごく薄い青
+  'AC': { label: 'AC', color: 'success.main', backgroundColor: '#e8f5e9' }, // ごく薄い緑
+  'AC_within_20m': { label: 'AC(within 20m)', color: 'warning.main', backgroundColor: '#fffde7' }, // ごく薄い黄
+} as const;
+
 // Problemの型定義
 export interface Problem {
   id: string;
   contest_id: string;
   title: string;
-  difficulty?: number; // `?` をつけてオプショナルにしておく
+  difficulty?: number;
   solveCount?: number;
   lastSolved?: number;
+  status?: keyof typeof STATUS_OPTIONS;
 }
 
-// ストアで管理する状態とアクションの型
+// ストアの型定義
 interface ProblemState {
   problems: Problem[];
   isLoading: boolean;
   fetchAndMergeProblems: (atcoderId: string) => Promise<void>;
+  updateProblemStatus: (problemId: string, newStatus: string) => void;
 }
 
-export const useProblemStore = create<ProblemState>((set) => ({
+export const useProblemStore = create<ProblemState>((set, get) => ({
   problems: [],
   isLoading: false,
+  
+  updateProblemStatus: (problemId, newStatus) => {
+    set({
+      problems: get().problems.map(problem => 
+        problem.id === problemId 
+          ? { ...problem, status: newStatus as keyof typeof STATUS_OPTIONS } 
+          : problem
+      ),
+    });
+  },
+
   fetchAndMergeProblems: async (atcoderId) => {
     set({ isLoading: true });
 
     try {
-      // --- 1. 必要なデータを並行して取得 ---
       const [problemResponse, difficultyResponse] = await Promise.all([
         axios.get('https://kenkoooo.com/atcoder/resources/merged-problems.json'),
         axios.get('https://kenkoooo.com/atcoder/resources/problem-models.json'),
@@ -36,26 +57,22 @@ export const useProblemStore = create<ProblemState>((set) => ({
       const allProblems: Problem[] = problemResponse.data;
       const difficultyModels: Record<string, { difficulty?: number }> = difficultyResponse.data;
 
-      // --- 2. 問題リストに難易度情報をマージ ---
       const problemsWithDifficulty = allProblems.map(problem => ({
         ...problem,
         difficulty: difficultyModels[problem.id]?.difficulty,
       }));
 
-      // --- 3. ユーザーの全提出履歴をループで取得 ---
       let allSubmissions: any[] = [];
       let lastTimestamp = 0;
       while (true) {
         const res = await axios.get(`https://kenkoooo.com/atcoder/atcoder-api/v3/user/submissions?user=${atcoderId}&from_second=${lastTimestamp}`);
-        if (res.data.length === 0) {
-          break;
-        }
+        if (res.data.length === 0) break;
+        
         allSubmissions = allSubmissions.concat(res.data);
         lastTimestamp = res.data[res.data.length - 1].epoch_second + 1;
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      // --- 4. 提出履歴を加工 ---
       const submissionMap = new Map<string, { solveCount: number; lastSolved: number }>();
       allSubmissions
         .filter(sub => sub.result === 'AC')
@@ -67,7 +84,6 @@ export const useProblemStore = create<ProblemState>((set) => ({
           });
         });
 
-      // --- 5. 最終的なデータを結合 ---
       const finalMergedProblems = problemsWithDifficulty.map(problem => {
         const submissionData = submissionMap.get(problem.id);
         return {
