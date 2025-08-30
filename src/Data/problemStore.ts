@@ -7,7 +7,7 @@ import { FirebaseError } from 'firebase/app';
 
 export const STATUS_OPTIONS = {
   'No Try': { label: 'No Try', color: 'text.secondary', backgroundColor: '#fafafa' },
-  'Kaiseki AC': { label: '解説AC', color: 'info.main', backgroundColor: '#e3f2fd' },
+  'Kaisetu AC': { label: '解説AC', color: 'info.main', backgroundColor: '#e3f2fd' },
   'AC': { label: 'AC', color: 'success.main', backgroundColor: '#e8f5e9' },
   'AC_within_20m': { label: 'AC(within 20m)', color: 'warning.main', backgroundColor: '#fffde7' },
 } as const;
