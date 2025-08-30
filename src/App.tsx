@@ -1,35 +1,77 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+    // src/App.tsx
+    import { useEffect } from 'react';
+    import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+    import { auth, db } from './firebase';
+    import { onAuthStateChanged } from 'firebase/auth';
+    import { doc, getDoc } from 'firebase/firestore';
+    import { useUserStore } from './Data/userStore';
+    import { Header } from './components/Header';
+    import { Box, CircularProgress } from '@mui/material';
+    import { AtcoderIdPrompt } from './components/AtcoderIdPrompt';
+    import { SearchPage } from './Page/SearchPage';
+    import { ProblemListPage } from './Page/ProblemListPage';
 
-function App() {
-  const [count, setCount] = useState(0)
+    const AppLayout = () => {
+      const { currentUser, setUser, isLoading, atcoderId, setAtcoderId } = useUserStore();
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+      useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+          try {
+            if (user) {
+              const userDocRef = doc(db, 'users', user.uid);
+              const docSnap = await getDoc(userDocRef);
+              if (docSnap.exists() && docSnap.data().atcoderId) {
+                setAtcoderId(docSnap.data().atcoderId);
+              } else {
+                setAtcoderId(null);
+              }
+            } else {
+              setAtcoderId(null);
+            }
+          } catch (error) {
+            console.error("Error fetching user profile:", error);
+            setAtcoderId(null);
+          } finally {
+            setUser(user);
+          }
+        });
+        return () => unsubscribe();
+      }, [setUser, setAtcoderId]);
 
-export default App
+      if (isLoading) {
+        return (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            <CircularProgress />
+          </Box>
+        );
+      }
+
+      if (currentUser && !atcoderId) {
+        return <AtcoderIdPrompt />;
+      }
+
+      return (
+        <>
+          <Header />
+          <main>
+            <Outlet />
+          </main>
+        </>
+      );
+    };
+
+    function App() {
+      return (
+        <BrowserRouter>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<SearchPage />} />
+              <Route path="/problems" element={<ProblemListPage />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      );
+    }
+
+    export default App;
+    
