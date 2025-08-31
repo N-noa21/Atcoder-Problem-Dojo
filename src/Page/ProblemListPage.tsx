@@ -1,4 +1,3 @@
-// src/pages/ProblemListPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useProblemStore, STATUS_OPTIONS, type Problem } from '../Data/problemStore';
@@ -14,7 +13,8 @@ const StatusBarSegment = ({ statusKey, count, total }: { statusKey: keyof typeof
   const config = STATUS_OPTIONS[statusKey];
   return (
     <Tooltip title={`${config.label}: ${count}問 (${percentage.toFixed(1)}%)`}>
-      <Box sx={{ width: `${percentage}%`, backgroundColor: config.color, height: '100%', transition: 'width 0.3s ease-in-out' }} />
+      <Box sx={{ width: `${percentage}%`, backgroundColor: config.color,
+      height: '100%', transition: 'width 0.3s ease-in-out' }} />
     </Tooltip>
   );
 };
@@ -109,7 +109,10 @@ export const ProblemListPage = () => {
           <Typography variant="h6" component="h2" gutterBottom>Status Overview</Typography>
           <Box sx={{ display: 'flex', width: '100%', height: '24px', borderRadius: 1, overflow: 'hidden', bgcolor: 'grey.200' }}>
             {Object.keys(STATUS_OPTIONS).map((key) => (
-              <StatusBarSegment key={key} statusKey={key as keyof typeof STATUS_OPTIONS} count={statusCounts[key as keyof typeof STATUS_OPTIONS]} total={filteredAndSortedProblems.length} />
+              <StatusBarSegment key={key}
+              statusKey={key as keyof typeof STATUS_OPTIONS}
+              count={statusCounts[key as keyof typeof STATUS_OPTIONS]}
+              total={filteredAndSortedProblems.length} />
             ))}
           </Box>
         </Box>
@@ -120,11 +123,14 @@ export const ProblemListPage = () => {
             const statusConfig = STATUS_OPTIONS[currentStatus];
             return (
               <Card variant="outlined" key={problem.id} sx={{ backgroundColor: statusConfig.backgroundColor, transition: 'background-color 0.3s' }}>
-                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between', alignItems: 'center' }}>
                   <CardContent sx={{ flexGrow: 1, width: '100%' }}>
                     <Typography variant="h6" component="div">{problem.title}</Typography>
-                    <Typography color="text.secondary" sx={{ mt: 1 }}>Difficulty: {problem.difficulty} / Solved: {problem.solveCount || 0} times</Typography>
-                    <Typography color="text.secondary" variant="body2" sx={{ mt: 0.5 }}>Last Solved: {problem.lastSolved ? new Date(problem.lastSolved * 1000).toLocaleString('ja-JP') : 'N/A'}</Typography>
+                    <Typography color="text.secondary"
+                    sx={{ mt: 1 }}>Difficulty: {problem.difficulty} / Solved: {problem.solveCount || 0} times</Typography>
+                    <Typography color="text.secondary"
+                    variant="body2" sx={{ mt: 0.5 }}>Last Solved: {problem.lastSolved ? new Date(problem.lastSolved * 1000).toLocaleString('ja-JP') : 'N/A'}</Typography>
                   </CardContent>
                   <CardActions sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
                     <Tooltip title="Edit Memo">

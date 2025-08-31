@@ -1,7 +1,6 @@
-// src/Data/problemStore.ts
 import { create } from 'zustand';
 import axios from 'axios';
-import { db, auth } from '../firebase';
+import { db, auth } from './firebase';
 import { doc, setDoc, getDocs, collection } from 'firebase/firestore';
 import { FirebaseError } from 'firebase/app';
 

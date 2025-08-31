@@ -1,9 +1,8 @@
-// src/components/Header.tsx
 import { useState } from 'react';
 import { AppBar, Toolbar, Typography, Button, Box, Avatar } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom'; // Linkをインポート
 import { useUserStore } from '../Data/userStore';
-import { auth } from '../firebase';
+import { auth } from '../Data/firebase';
 import { signOut } from 'firebase/auth';
 import { AuthModal } from './AuthModal';
 

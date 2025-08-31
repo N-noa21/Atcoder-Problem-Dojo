@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Box, Modal, TextField, Button, Tabs, Tab, Alert } from '@mui/material';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
-import { auth } from '../firebase';
+import { auth } from '../Data/firebase';
 
 interface AuthModalProps {
   open: boolean;
