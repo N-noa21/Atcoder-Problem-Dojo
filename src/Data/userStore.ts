@@ -1,4 +1,3 @@
-// src/Data/userStore.ts
 import { create } from 'zustand';
 import type { User } from 'firebase/auth';
 

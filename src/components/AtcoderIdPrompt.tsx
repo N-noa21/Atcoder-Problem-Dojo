@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Box, Typography, TextField, Button, Container, Paper, Alert } from '@mui/material';
-import { auth, db } from '../firebase';
+import { auth, db } from '../Data/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useUserStore } from '../Data/userStore';
 

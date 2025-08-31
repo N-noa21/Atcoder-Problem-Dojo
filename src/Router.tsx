@@ -1,5 +1,3 @@
-// src/Router.tsx
-
 import { Routes, Route } from 'react-router-dom';
 import { SearchPage } from './Page/SearchPage';
 import { ProblemListPage } from './Page/ProblemListPage';
